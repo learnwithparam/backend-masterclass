@@ -1,0 +1,88 @@
+# =============================================================================
+# Docker Compose — Full Production Stack
+#
+# KEY CONCEPT: Docker Compose orchestrates multiple containers as a single
+# system. Instead of 3 terminal tabs (DB, Order Service, Inventory Service),
+# you run `docker compose up` and everything starts in the right order.
+#
+# The depends_on + healthcheck pattern ensures services start only when
+# their dependencies are truly ready (not just "container started").
+# =============================================================================
+version: '3.8'
+
+services:
+  # PostgreSQL — shared database for both microservices
+  db:
+    image: postgres:15-alpine
+    container_name: bookstore_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bookstore
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    # Healthcheck: pg_isready returns 0 when PostgreSQL accepts connections.
+    # Without this, Node services might boot before Postgres is ready.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d bookstore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis — event bus (Pub/Sub) + caching
+  redis:
+    image: redis:7-alpine
+    container_name: bookstore_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Order Service — public-facing API (port 3000)
+  order-service:
+    build:
+      context: .
+      dockerfile: after/order-service/Dockerfile
+    container_name: bookstore_order_service
+    ports:
+      - "3000:3000"
+    environment:
+      # Inside Docker, services reference each other by container name.
+      # 'db' resolves to the PostgreSQL container, not localhost.
+      - DATABASE_URL=postgres://user:password@db:5432/bookstore
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=production_super_secret_key
+      - PORT=3000
+    # condition: service_healthy means "wait until the healthcheck passes"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Inventory Service — event-driven backend (port 4000)
+  inventory-service:
+    build:
+      context: .
+      dockerfile: after/inventory-service/Dockerfile
+    container_name: bookstore_inventory_service
+    ports:
+      - "4000:4000"
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/bookstore
+      - REDIS_URL=redis://redis:6379
+      - INVENTORY_PORT=4000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+# Named volume — persists PostgreSQL data across container restarts
+volumes:
+  db_data:

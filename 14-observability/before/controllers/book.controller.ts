@@ -1,0 +1,35 @@
+import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import * as bookService from '../services/book.service.js';
+
+const CreateBookSchema = z.object({
+  title: z.string().min(1), author: z.string().min(1),
+  pages: z.number().int().positive(), published: z.string(),
+});
+
+export async function getBooksHandler(req: Request, res: Response, next: NextFunction) {
+  try { res.json(await bookService.getAllBooks()); } catch (error) { next(error); }
+}
+
+export async function getBookHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const book = await bookService.getBookById(parseInt(req.params.id, 10));
+    if (!book) { res.status(404).json({ error: 'Book not found' }); return; }
+    res.json(book);
+  } catch (error) { next(error); }
+}
+
+export async function createBookHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const v = CreateBookSchema.safeParse(req.body);
+    if (!v.success) { res.status(400).json({ error: 'Invalid book data' }); return; }
+    res.status(201).json(await bookService.createBook(v.data as any));
+  } catch (error) { next(error); }
+}
+
+export async function deleteBookHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!(await bookService.deleteBook(parseInt(req.params.id, 10)))) { res.status(404).json({ error: 'Book not found' }); return; }
+    res.status(204).send();
+  } catch (error) { next(error); }
+}

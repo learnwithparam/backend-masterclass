@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "The Pragmatic Programmer",
+    "author": "Andrew Hunt",
+    "pages": 320,
+    "published": "1999-10-20"
+  },
+  {
+    "id": 2,
+    "title": "Clean Code",
+    "author": "Robert C. Martin",
+    "pages": 464,
+    "published": "2008-08-01"
+  }
+]

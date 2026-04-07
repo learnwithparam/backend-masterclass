@@ -8,8 +8,6 @@
 # The depends_on + healthcheck pattern ensures services start only when
 # their dependencies are truly ready (not just "container started").
 # =============================================================================
-version: '3.8'
-
 services:
   # PostgreSQL — shared database for both microservices
   db:

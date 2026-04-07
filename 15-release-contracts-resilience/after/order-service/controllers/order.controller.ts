@@ -33,7 +33,7 @@ export async function createOrderHandler(req: Request, res: Response, next: Next
 
 export async function getOrderHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const orderId = parseInt(req.params.id, 10);
+    const orderId = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
     if (isNaN(orderId)) {
       res.status(400).json({ error: 'Invalid order ID' });
       return;

@@ -13,7 +13,8 @@ export async function getBooksHandler(req: Request, res: Response, next: NextFun
 
 export async function getBookHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const book = await bookService.getBookById(parseInt(req.params.id, 10));
+    const bookId = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
+    const book = await bookService.getBookById(bookId);
     if (!book) { res.status(404).json({ error: 'Book not found' }); return; }
     res.json(book);
   } catch (error) { next(error); }
@@ -30,7 +31,7 @@ export async function createBookHandler(req: Request, res: Response, next: NextF
 
 export async function deleteBookHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
     if (!(await bookService.deleteBook(id))) { res.status(404).json({ error: 'Book not found' }); return; }
     res.status(204).send();
   } catch (error) { next(error); }

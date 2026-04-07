@@ -22,5 +22,7 @@ Hands-on backend masterclass for building real APIs, auth flows, caching layers,
 - `12-api-hardening`
 - `13-realtime-websockets`
 - `14-observability`
+- `15-release-contracts-resilience`
+- `16-release-engineering-contracts`
 
 Each module includes a before/after style path so learners can compare the implementation steps and ship a production-grade backend.

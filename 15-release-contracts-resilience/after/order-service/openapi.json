@@ -1,0 +1,40 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Book API",
+    "version": "1.0.0",
+    "description": "Contract-first API published as part of the release process."
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login",
+        "responses": {
+          "200": {
+            "description": "JWT token returned"
+          }
+        }
+      }
+    },
+    "/api/books": {
+      "get": {
+        "summary": "List books",
+        "responses": {
+          "200": {
+            "description": "Paginated books"
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "post": {
+        "summary": "Place order",
+        "responses": {
+          "202": {
+            "description": "Order accepted"
+          }
+        }
+      }
+    }
+  }
+}

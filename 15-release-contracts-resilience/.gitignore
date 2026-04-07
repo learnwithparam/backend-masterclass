@@ -41,11 +41,3 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
-
-# Generated test files
-.smoke-server-*.cjs
-*.tmp
-
-# Uploaded files created by smoke tests
-uploads/*
-!uploads/.gitkeep

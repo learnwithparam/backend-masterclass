@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # smoke-all.sh — Run all module smoke tests sequentially
 # Usage: bash scripts/smoke-all.sh [module_number]
-#   No args  → runs all 14 modules
+#   No args  → runs all 16 modules
 #   With arg → runs only that module (e.g., "bash scripts/smoke-all.sh 03")
 
 set -euo pipefail
@@ -30,6 +30,8 @@ MODULES=(
   "12-api-hardening"
   "13-realtime-websockets"
   "14-observability"
+  "15-release-contracts-resilience"
+  "16-release-engineering-contracts"
 )
 
 PASSED=()
@@ -38,7 +40,7 @@ SKIPPED=()
 
 between_modules_cleanup() {
   # Kill any leftover processes on common ports
-  for port in 3000 3001 5173 5432 6379; do
+  for port in 3000 3001 3150 3160 4150 5173 5432 5437 5450 5460 6385 6395 6379; do
     lsof -ti ":$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
   done
   # Stop any lingering docker compose services from any module

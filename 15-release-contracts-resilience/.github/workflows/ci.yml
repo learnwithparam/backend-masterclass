@@ -1,0 +1,42 @@
+# =============================================================================
+# CI Pipeline — Automated Quality Gates
+#
+# KEY CONCEPT: CI (Continuous Integration) runs automatically on every push
+# and pull request. It catches bugs before they reach production by running:
+#   1. Type checking (catches type errors that IDE might miss)
+#   2. Tests (catches logic errors and regressions)
+#
+# If any step fails, the PR is marked as failing and cannot be merged.
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    # npm ci (not npm install) for reproducible builds from lock file
+    - name: Install dependencies
+      run: npm ci
+
+    # Type check catches errors like wrong argument types, missing imports
+    - name: Type Check
+      run: npx tsc --noEmit
+
+    # Integration tests verify the API works end-to-end
+    - name: Run Tests
+      run: npm run test

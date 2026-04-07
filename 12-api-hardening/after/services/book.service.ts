@@ -10,7 +10,7 @@
  * Trade-off: You lose "jump to page 50" — but infinite scroll doesn't
  * need that. For admin tables, use OFFSET pagination instead.
  */
-import { db } from '../db/index.js';
+import { getDb } from '../db/index.js';
 import { books, Book, NewBook } from '../db/schema.js';
 import { eq, gt, asc } from 'drizzle-orm';
 
@@ -24,7 +24,7 @@ export async function getBooksPaginated(cursor?: number, limit: number = 20): Pr
   // Fetch one extra to detect if there are more pages
   const fetchLimit = limit + 1;
 
-  const query = db.select().from(books)
+  const query = getDb().select().from(books)
     .$dynamic();
 
   if (cursor) {
@@ -40,21 +40,21 @@ export async function getBooksPaginated(cursor?: number, limit: number = 20): Pr
 }
 
 export async function getBookById(id: number): Promise<Book | undefined> {
-  const result = await db.select().from(books).where(eq(books.id, id));
+  const result = await getDb().select().from(books).where(eq(books.id, id));
   return result[0];
 }
 
 export async function createBook(bookInput: NewBook): Promise<Book> {
-  const result = await db.insert(books).values(bookInput).returning();
+  const result = await getDb().insert(books).values(bookInput).returning();
   return result[0];
 }
 
 export async function deleteBook(id: number): Promise<boolean> {
-  const result = await db.delete(books).where(eq(books.id, id)).returning({ deletedId: books.id });
+  const result = await getDb().delete(books).where(eq(books.id, id)).returning({ deletedId: books.id });
   return result.length > 0;
 }
 
 export async function updateBookCover(id: number, coverUrl: string): Promise<Book | undefined> {
-  const result = await db.update(books).set({ coverUrl }).where(eq(books.id, id)).returning();
+  const result = await getDb().update(books).set({ coverUrl }).where(eq(books.id, id)).returning();
   return result[0];
 }

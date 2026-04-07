@@ -23,6 +23,10 @@ interface AuthenticatedWebSocket extends WebSocket {
 export function setupWebSocket(server: HttpServer): WebSocketServer {
   const wss = new WebSocketServer({ noServer: true });
 
+  server.once('close', () => {
+    wss.close();
+  });
+
   // KEY CONCEPT: The 'upgrade' event fires when a client sends an HTTP
   // request with "Connection: Upgrade" and "Upgrade: websocket" headers.
   // This is our chance to authenticate BEFORE the WebSocket opens.

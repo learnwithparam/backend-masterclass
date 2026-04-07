@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # smoke-all.sh — Run all module smoke tests sequentially
 # Usage: bash scripts/smoke-all.sh [module_number]
-#   No args  → runs all 11 modules
+#   No args  → runs all 14 modules
 #   With arg → runs only that module (e.g., "bash scripts/smoke-all.sh 03")
 
 set -euo pipefail
@@ -27,6 +27,9 @@ MODULES=(
   "09-ddd-functional-architecture"
   "10-microservices-and-events"
   "11-ship-it"
+  "12-api-hardening"
+  "13-realtime-websockets"
+  "14-observability"
 )
 
 PASSED=()

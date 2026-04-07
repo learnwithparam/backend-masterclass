@@ -8,8 +8,12 @@ function requireEnv(name: string): string {
 }
 
 export const config = {
-  jwtSecret: requireEnv('JWT_SECRET'),
-  databaseUrl: requireEnv('DATABASE_URL'),
+  get jwtSecret() {
+    return requireEnv('JWT_SECRET');
+  },
+  get databaseUrl() {
+    return requireEnv('DATABASE_URL');
+  },
   uploadDir: process.env.UPLOAD_DIR || './uploads',
   port: parseInt(process.env.PORT || '3000', 10),
 };

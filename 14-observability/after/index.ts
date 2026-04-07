@@ -1,5 +1,4 @@
 import express from 'express';
-import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { bookRouter } from './routes/book.routes.js';
 import { authRouter } from './routes/auth.routes.js';
@@ -65,6 +64,6 @@ export function stopServer() {
   if (serverInstance) serverInstance.close();
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && /after\/index\.(ts|js)$/.test(process.argv[1])) {
   startServer(3000);
 }

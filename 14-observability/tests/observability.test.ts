@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
-import { app, startServer, stopServer } from '../after/index.js';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
+
+let app: any;
+let startServer: any;
+let stopServer: any;
 
 describe('Module 14: Observability', () => {
   let container: any;
@@ -13,6 +16,12 @@ describe('Module 14: Observability', () => {
       .withPassword('password')
       .start();
     process.env.DATABASE_URL = container.getConnectionUri();
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+
+    const mod = await import('../after/index.js');
+    app = mod.app;
+    startServer = mod.startServer;
+    stopServer = mod.stopServer;
   }, 60000);
 
   afterAll(async () => {

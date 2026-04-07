@@ -10,7 +10,19 @@ dotenv.config();
 // Testing pure functions
 import { createNewOrder } from '../after/order-service/domain/order/order.entity.js';
 
-describe('Module 10: Event-Driven Microservices', () => {
+async function waitForInventoryQuantity(db: any, schema: any, bookId: number, expected: number) {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const rows = await db.select().from(schema).where(require('drizzle-orm').eq(schema.bookId, bookId));
+    if (rows[0] && rows[0].stockQuantity === expected) {
+      return rows[0];
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(`Timed out waiting for inventory quantity ${expected} for book ${bookId}`);
+}
+
+describe('Module 11: Ship It (Docker, CI/CD, and Production)', () => {
   let pgContainer: StartedPostgreSqlContainer;
   let redisContainer: StartedTestContainer;
   let request: any;
@@ -36,55 +48,62 @@ describe('Module 10: Event-Driven Microservices', () => {
   let customerToken: string;
 
   beforeAll(async () => {
-    console.log('🐳 Starting PostgreSQL & Redis Testcontainers...');
-    
-    // Start Postgres
-    pgContainer = await new PostgreSqlContainer('postgres:15-alpine')
-      .withDatabase('bookstore_test').withUsername('testuser').withPassword('testpass').start();
-    
-    // Start Redis (for Pub/Sub)
-    redisContainer = await new GenericContainer('redis:7-alpine')
-      .withExposedPorts(6379).start();
+    try {
+      console.log('🐳 Starting PostgreSQL & Redis Testcontainers...');
+      
+      // Start Postgres
+      pgContainer = await new PostgreSqlContainer('postgres:15-alpine')
+        .withDatabase('bookstore_test').withUsername('testuser').withPassword('testpass').start();
+      
+      // Start Redis (for Pub/Sub)
+      redisContainer = await new GenericContainer('redis:7-alpine')
+        .withExposedPorts(6379).start();
 
-    process.env.DATABASE_URL = pgContainer.getConnectionUri();
-    process.env.REDIS_URL = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
-    process.env.JWT_SECRET = 'test_secret_key';
-    
-    // Use different ports for the apps
-    process.env.PORT = '3000';
-    process.env.INVENTORY_PORT = '4000';
+      process.env.DATABASE_URL = pgContainer.getConnectionUri();
+      process.env.REDIS_URL = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
+      process.env.JWT_SECRET = 'test_secret_key';
+      
+      // Use different ports for the apps
+      process.env.PORT = '3000';
+      process.env.INVENTORY_PORT = '4000';
 
-    console.log('📦 Pushing Drizzle Schema...');
-    execSync('npx drizzle-kit push', { env: { ...process.env }, stdio: 'ignore' });
+      console.log('📦 Pushing Drizzle Schema...');
+      execSync('npx drizzle-kit push', { env: { ...process.env }, stdio: 'ignore' });
+      console.log('📦 Schema pushed');
 
-    // Load Order Service dependencies
-    // @ts-ignore
-    const oDbModule = await import('../after/order-service/db/index.js');
-    orderDb = oDbModule.db; orderClient = oDbModule.client;
-    // @ts-ignore
-    const oSchemaModule = await import('../after/order-service/db/schema.js');
-    books = oSchemaModule.books; users = oSchemaModule.users; ordersSchema = oSchemaModule.orders;
-    // @ts-ignore
-    const oAppModule = await import('../after/order-service/index.js');
-    orderApp = oAppModule.app; orderStopServer = oAppModule.stopServer;
+      // Load Order Service dependencies
+      // @ts-ignore
+      const oDbModule = await import('../after/order-service/db/index.js');
+      orderDb = oDbModule.db; orderClient = oDbModule.client;
+      // @ts-ignore
+      const oSchemaModule = await import('../after/order-service/db/schema.js');
+      books = oSchemaModule.books; users = oSchemaModule.users; ordersSchema = oSchemaModule.orders;
+      // @ts-ignore
+      const oAppModule = await import('../after/order-service/index.js');
+      orderApp = oAppModule.app; orderStopServer = oAppModule.stopServer;
 
-    // Load Inventory Service dependencies
-    // @ts-ignore
-    const iDbModule = await import('../after/inventory-service/db/index.js');
-    inventoryDb = iDbModule.db;
-    // @ts-ignore
-    const iSchemaModule = await import('../after/inventory-service/db/schema.js');
-    inventorySchema = iSchemaModule.inventory;
-    // @ts-ignore
-    const iAppModule = await import('../after/inventory-service/index.js');
-    inventoryApp = iAppModule.app; inventoryStopServer = () => iAppModule.server?.close?.();
+      // Load Inventory Service dependencies
+      // @ts-ignore
+      const iDbModule = await import('../after/inventory-service/db/index.js');
+      inventoryDb = iDbModule.db;
+      // @ts-ignore
+      const iSchemaModule = await import('../after/inventory-service/db/schema.js');
+      inventorySchema = iSchemaModule.inventory;
+      // @ts-ignore
+      const iAppModule = await import('../after/inventory-service/index.js');
+      inventoryApp = iAppModule.app; inventoryStopServer = () => iAppModule.server?.close?.();
 
-    request = supertest(orderApp);
+      request = supertest(orderApp);
 
-    // Setup user
-    await request.post('/api/auth/register').send({ username: 'microservices', password: 'password123' });
-    const login = await request.post('/api/auth/login').send({ username: 'microservices', password: 'password123' });
-    customerToken = login.body.token;
+      // Setup user
+      await request.post('/api/auth/register').send({ username: 'microservices', password: 'password123' });
+      const login = await request.post('/api/auth/login').send({ username: 'microservices', password: 'password123' });
+      customerToken = login.body.token;
+      console.log('✅ Ship-it setup complete');
+    } catch (error) {
+      console.error('beforeAll failure', error);
+      throw error;
+    }
   }, 60000);
 
   beforeEach(async () => {
@@ -117,25 +136,30 @@ describe('Module 10: Event-Driven Microservices', () => {
 
   describe('Inter-Service Communication (REST -> Pub/Sub -> DB)', () => {
     it('Order Service should publish event, and Inventory Service should deduct stock', async () => {
-      // 1. Initial State Check
-      const startStock = await inventoryDb.select().from(inventorySchema).where(require('drizzle-orm').eq(inventorySchema.bookId, book1Id));
-      expect(startStock[0].stockQuantity).toBe(100);
+      try {
+        // 1. Initial State Check
+        const startStock = await inventoryDb.select().from(inventorySchema).where(require('drizzle-orm').eq(inventorySchema.bookId, book1Id));
+        console.log('startStock', startStock);
+        expect(startStock[0].stockQuantity).toBe(100);
 
-      // 2. Call Order Service REST API
-      const res = await request.post('/api/orders')
-        .set('Authorization', `Bearer ${customerToken}`)
-        .send({ bookId: book1Id, quantity: 5 });
+        // 2. Call Order Service REST API
+        const res = await request.post('/api/orders')
+          .set('Authorization', `Bearer ${customerToken}`)
+          .send({ bookId: book1Id, quantity: 5 });
 
-      expect(res.status).toBe(202);
-      expect(res.body.order.status).toBe('pending');
-      expect(res.body.order.quantity).toBe(5);
+        console.log('order response', res.status, res.body);
+        expect(res.status).toBe(202);
+        expect(res.body.order.status).toBe('pending');
+        expect(res.body.order.quantity).toBe(5);
 
-      // 3. Wait for Eventual Consistency (allow Redis Pub/Sub to deliver and Inventory service to process)
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // 4. Verify Inventory Service reacted correctly
-      const endStock = await inventoryDb.select().from(inventorySchema).where(require('drizzle-orm').eq(inventorySchema.bookId, book1Id));
-      expect(endStock[0].stockQuantity).toBe(95); // 100 - 5 = 95
+        // 3. Wait for Eventual Consistency (allow Redis Pub/Sub to deliver and Inventory service to process)
+        const endStock = await waitForInventoryQuantity(inventoryDb, inventorySchema, book1Id, 95);
+        console.log('endStock', endStock);
+        expect(endStock.stockQuantity).toBe(95); // 100 - 5 = 95
+      } catch (error) {
+        console.error('ship-it test failure', error);
+        throw error;
+      }
     });
   });
 });
